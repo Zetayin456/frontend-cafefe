@@ -1,49 +1,65 @@
-import { categories as sampleCategories, products as sampleProducts, normalizeOrder } from './data.js';
+export const API_BASE = 'http://localhost:9080/cafeteria_pos/api';
 
-const config = JSON.parse(localStorage.getItem('cafefe-config') || '{}');
-export const API_BASE = config.apiBase || 'http://localhost:8080';
-export const API_PATHS = { login: '/api/empleados/login', categories: '/api/categorias', products: '/api/productos', orders: '/api/ordenes', payments: id => `/api/ordenes/${encodeURIComponent(id)}/pagos`, ...config.paths };
-
-async function request(path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
-  if (!response.ok) throw new Error(`API ${response.status}`);
-  if (response.status === 204) return null;
-  return response.json();
+async function request(path, { method = 'GET', body, ...options } = {}) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: { Accept: 'application/json', ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...options
+    });
+  } catch (error) {
+    if (method === 'GET') {
+      const cached = localStorage.getItem(`cafefe-api:${path}`);
+      if (cached !== null) { try { const entry = JSON.parse(cached); const headers = new Headers(); if (entry.total != null) headers.set('total-registros', entry.total); return { payload: entry.payload ?? entry, headers }; } catch { localStorage.removeItem(`cafefe-api:${path}`); } }
+    }
+    throw new Error(`No se pudo conectar con el backend ${API_BASE}. ${error.message}`);
+  }
+  const text = await response.text();
+  let payload = null;
+  try { payload = text ? JSON.parse(text) : null; } catch { payload = text; }
+  if (!response.ok) throw new Error(payload?.error || payload?.message || `La API respondió HTTP ${response.status}${text ? `: ${text}` : ''}`);
+  if (method === 'GET') { try { localStorage.setItem(`cafefe-api:${path}`, JSON.stringify({ payload, total: response.headers.get('total-registros') })); } catch { /* La respuesta API sigue disponible aunque el navegador no permita almacenarla. */ } }
+  return { payload, headers: response.headers };
 }
-const collection = value => Array.isArray(value) ? value : value?.content ?? value?.data ?? value?.items ?? [];
-const cache = (key, fallback) => {
-  try { return JSON.parse(localStorage.getItem(`cafefe-${key}`)) ?? fallback; } catch { return fallback; }
-};
-const save = (key, value) => localStorage.setItem(`cafefe-${key}`, JSON.stringify(value));
+
+async function getAll(path) {
+  const result = [];
+  let first = 0;
+  const max = 100;
+  let total = Infinity;
+  while (first < total) {
+    const { payload, headers } = await request(`${path}?first=${first}&max=${max}`);
+    if (!Array.isArray(payload)) throw new Error(`La respuesta de ${path} no es un arreglo JSON.`);
+    result.push(...payload);
+    const count = Number(headers.get('total-registros'));
+    total = Number.isFinite(count) ? count : result.length;
+    if (!payload.length) break;
+    first += payload.length;
+  }
+  return result;
+}
 
 export const api = {
-  async login(name, password) {
-    try { return await request(API_PATHS.login, { method: 'POST', body: JSON.stringify({ nombre: name, username: name, password, identificador: password }) }); }
-    catch (error) { throw new Error(`No se pudo validar el empleado. Revisa que la API esté disponible en ${API_BASE}.`); }
-  },
-  async getCategories() {
-    try { const list = collection(await request(API_PATHS.categories)); save('categories', list); return list; }
-    catch { return cache('categories', sampleCategories); }
-  },
-  async getProducts() {
-    try { const list = collection(await request(API_PATHS.products)); save('products', list); return list; }
-    catch { return cache('products', sampleProducts); }
-  },
-  async getOrders() {
-    try { const list = collection(await request(API_PATHS.orders)); save('orders', list); return list.map(normalizeOrder); }
-    catch { return cache('orders', []).map(normalizeOrder); }
-  },
-  async createOrder(order) {
-    try { const created = await request(API_PATHS.orders, { method: 'POST', body: JSON.stringify({ nombreCliente: order.customerName, descripcion: order.description, detalles: order.items.map(i => ({ productoId: i.id, cantidad: i.quantity, descripcion: `${order.customerName}: ${i.name}` })) }) }); return normalizeOrder(created); }
-    catch { const list = cache('orders', []); const created = normalizeOrder({ ...order, id: `local-${Date.now()}`, status: 'Pendiente' }); list.push(created); save('orders', list); return created; }
-  },
-  async addPayment(order, payment) {
-    try { return await request(API_PATHS.payments(order.id), { method: 'POST', body: JSON.stringify({ monto: payment.amount, formaPago: payment.method, metodo: payment.method }) }); }
-    catch { const list = cache('orders', []).map(normalizeOrder); const index = list.findIndex(o => String(o.id) === String(order.id)); if (index < 0) throw new Error('La API no está disponible para registrar el pago.'); list[index].paid = (list[index].paid || 0) + payment.amount; if (list[index].paid >= list[index].total) list[index].status = 'Pagada'; save('orders', list); return list[index]; }
-  },
-  async completeOrder(order) {
-    try { return await request(`${API_PATHS.orders}/${encodeURIComponent(order.id)}/despachar`, { method: 'PATCH' }); }
-    catch { const list = cache('orders', []).map(normalizeOrder); const index = list.findIndex(o => String(o.id) === String(order.id)); if (index >= 0) { list[index].status = 'Despachada'; save('orders', list); } return list[index]; }
-  },
-  isOnline: () => navigator.onLine
+  login: async (nombre, contrasena) => (await request('/empleado/login', { method: 'POST', body: { nombre, contrasena } })).payload,
+  getCategories: () => getAll('/v1/tipos-producto'),
+  getProducts: () => getAll('/v1/productos'),
+  getBoxes: () => getAll('/v1/cajas'),
+  getPendingOrders: async () => (await request('/orden/pendientes')).payload,
+  createOrder: async ({ customerName, items, observations = '' }) => (await request('/orden', {
+    method: 'POST',
+    body: {
+      cliente: customerName,
+      productos: items.map(item => ({ idProducto: item.idProducto, cantidad: item.quantity, observaciones: [customerName, item.observations, observations].filter(Boolean).join(' · ') }))
+    }
+  })).payload,
+  getPendingInvoices: async () => (await request('/factura/pendientes')).payload,
+  createInvoice: async ({ orderId, boxId, employeeRoleId, customer, observations }) => (await request('/factura', {
+    method: 'POST', body: { idOrden: orderId, idCaja: boxId, idEmpleadoRol: employeeRoleId, cliente: customer, observaciones }
+  })).payload,
+  getInvoice: async id => (await request(`/factura/${encodeURIComponent(id)}`)).payload,
+  createPayment: async ({ invoiceId, observations, details }) => (await request('/pago', {
+    method: 'POST', body: { idFactura: invoiceId, observaciones: observations, detalles: details.map(detail => ({ tipoPago: detail.method, monto: Number(detail.amount), referenciaExterna: detail.reference || null, observaciones: detail.observations || null })) }
+  })).payload
 };

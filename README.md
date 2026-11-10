@@ -1,39 +1,36 @@
 # Cafefe frontend
 
-Frontend SPA/PWA para las historias de usuario de la segunda evaluación de PPI115. Está implementado con ECMAScript y Web Components nativos, sin framework ni dependencias de interfaz.
+SPA/PWA desarrollada con ECMAScript, Custom Elements y CSS propio. No usa librerías, frameworks, icon packs ni componentes de terceros.
 
-## Inicio
+## Ejecución local
 
-Sirve la carpeta `public_html` mediante un servidor HTTP local. El service worker y la instalación PWA requieren `localhost` o HTTPS; abrir `index.html` como archivo no activa esas capacidades.
+Sirve `public_html` desde un servidor HTTP local (por ejemplo `npx http-server public_html`) y abre la dirección local que indique. El service worker y la instalación PWA necesitan `localhost` o HTTPS.
 
-## API del backend
+## Backend
 
-El cliente usa por defecto `http://localhost:8080` y estas rutas:
+La base URL local sigue la guía de integración: `http://localhost:9080/cafeteria_pos/api`. Se requiere iniciar Open Liberty con la aplicación `cafeteria_pos` y disponer de los datos oficiales, en particular empleado/rol `Mesero Virtual`, empleados con roles activos, productos, tipos de producto y cajas activas.
 
-- `POST /api/empleados/login` con `{ nombre, username, password, identificador }`.
-- `GET /api/categorias` y `GET /api/productos`.
-- `GET /api/ordenes`, `POST /api/ordenes`.
-- `POST /api/ordenes/{id}/pagos` y `PATCH /api/ordenes/{id}/despachar`.
+El frontend consume únicamente estos recursos documentados:
 
-El contrato de rutas puede cambiarse sin tocar las pantallas guardando configuración en la consola del navegador:
+- `POST /empleado/login` (`nombre`, `contrasena`), con el UUID del empleado como contraseña.
+- `GET /v1/tipos-producto`, `GET /v1/productos` y `GET /v1/cajas`, con paginación `first`/`max`.
+- `POST /orden` y `GET /orden/pendientes`.
+- `POST /factura`, `GET /factura/pendientes` y `GET /factura/{id}`.
+- `POST /pago`.
 
-```js
-localStorage.setItem('cafefe-config', JSON.stringify({
-  apiBase: 'http://localhost:8080',
-  paths: { login: '/ruta/login', categories: '/ruta/categorias', products: '/ruta/productos', orders: '/ruta/ordenes' }
-}));
-```
+## Historias incluidas
 
-Las rutas de pagos y despacho son funciones derivadas de la ruta de órdenes. Las respuestas de colecciones aceptan arreglo directo o envoltorios `content`, `data` e `items`. Para el backend se reconocen nombres de campos comunes en español e inglés. Productos y categorías tienen datos de demostración si la API no responde; órdenes creadas sin conexión se guardan en el almacenamiento local. El login requiere API disponible.
+- **HU1:** login empleado con nombre e ID UUID, y navegación por los roles activos que devuelve el backend.
+- **HU2:** catálogo activo por tipo, carrito, nombre de cliente y envío de productos/cantidades al endpoint público. El backend calcula precios y asigna Mesero Virtual.
+- **HU3:** cola de órdenes pendientes y detalle de productos, cantidades, observaciones y total.
+- **HU4:** facturación de una orden con caja y rol de cajero; pagos divididos entre efectivo, tarjeta y QR; consulta del ticket JSON y vista de impresión que el navegador puede guardar como PDF.
 
-## Flujos implementados
+El esquema del backend no tiene una operación para cambiar el estado de cocina ni guardar despacho. Por eso HU3 presenta las órdenes pendientes y el detalle, pero no simula una acción de despacho persistente. El DTO de producto debe incluir la relación con el tipo para poder filtrar con precisión; si el backend omite esa relación, se muestran los productos activos sin filtro.
 
-- Pedido anónimo por categoría, selección de productos, cantidades, nombre y envío.
-- Login de empleado y navegación a recepción o caja según el rol devuelto por la API.
-- Recepción con detalle y acción para despachar una orden pendiente.
-- Pagos parciales por varias formas hasta cubrir el saldo, con ticket en vista imprimible del navegador (desde allí se puede guardar como PDF).
-- Navegación SPA por hash, diseño adaptable, instalación PWA y shell cacheado para uso offline.
+## PWA y modo offline
+
+El service worker sirve el shell de la aplicación desde caché si no hay red. Las respuestas exitosas de los GET del backend también se guardan en el navegador para consultar el último catálogo y los últimos pendientes vistos sin conexión. Las operaciones POST requieren conexión con el backend y nunca se simulan ni se ponen en cola localmente.
 
 ## Pruebas
 
-Las pruebas unitarias nativas de Node.js están en `tests/data.test.js`; correr con `npm test`.
+Las pruebas unitarias usan el runner nativo de Node.js: `npm test`.
