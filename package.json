@@ -4,5 +4,7 @@
     "keywords": ["util", "functional", "server", "client", "browser"],
     "author": "diego",
     "contributors": [],
+    "type": "module",
+    "scripts": { "test": "node --test" },
     "dependencies": {}
 }
