@@ -5,6 +5,7 @@ import { EmpleadoDAO } from '../../../../public_html/js/control/empleado_dao.js'
 import { OrdenDAO } from '../../../../public_html/js/control/orden_dao.js';
 import { FacturaDAO } from '../../../../public_html/js/control/factura_dao.js';
 import { PagoDAO } from '../../../../public_html/js/control/pago_dao.js';
+import { OrdenDespachoStore } from '../../../../public_html/js/control/orden_despacho_store.js';
 import { ProductoDAO } from '../../../../public_html/js/control/producto_dao.js';
 import { TipoProductoDAO } from '../../../../public_html/js/control/tipo_producto_dao.js';
 import { CajaDAO } from '../../../../public_html/js/control/caja_dao.js';
@@ -22,6 +23,7 @@ import { OrdenProducto } from '../../../../public_html/js/entity/orden_producto.
 import { FacturaOrdenProducto } from '../../../../public_html/js/entity/factura_orden_producto.js';
 import { Pago } from '../../../../public_html/js/entity/pago.js';
 import { PagoDetalle } from '../../../../public_html/js/entity/pago_detalle.js';
+import { employeeFullName, employeeGreeting, employeeRoleLabel, orderClientName, productName } from '../../../../public_html/js/boundary/boundary_utils.js';
 
 const jsonResponse = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...headers } });
 
@@ -85,4 +87,52 @@ test('Controller valida que la suma del split sea exacta antes del POST', async 
   assert.equal(calls, 0);
   await controller.registrarPago({ factura, detalles: [{ tipoPago: 'EFECTIVO', monto: 6 }, { tipoPago: 'QR', monto: 4 }] });
   assert.equal(calls, 1);
+});
+
+test('Recepción resuelve el nombre del producto y extrae el cliente de observaciones', () => {
+  const productsById = new Map([['p-1', { idProducto: 'p-1', nombre: 'Capuchino Grande' }]]);
+  const order = {
+    cliente: 'Cliente mostrador',
+    productos: [{ idProducto: 'p-1', observaciones: 'Ana · Sin azúcar' }]
+  };
+  assert.equal(productName(order.productos[0], productsById), 'Capuchino Grande');
+  assert.equal(orderClientName(order), 'Ana');
+  assert.equal(orderClientName({ cliente: 'Luis', productos: order.productos }), 'Luis');
+});
+
+test('la navegación y las vistas de empleado pueden saludar con nombre y rol de sesión', () => {
+  const barista = { nombre: 'Miguel', apellido: 'Ruiz', roles: [{ nombre: 'BARISTA' }] };
+  const cashier = { nombre: 'Ana', roles: [{ nombre: 'CAJERO' }] };
+  assert.equal(employeeFullName(barista), 'Miguel Ruiz');
+  assert.equal(employeeRoleLabel(barista), 'Barista');
+  assert.equal(employeeGreeting(barista), '¡Hola, Barista Miguel Ruiz!');
+  assert.equal(employeeRoleLabel(cashier), 'Cajera');
+  assert.equal(employeeGreeting(cashier), '¡Hola, Cajera Ana!');
+});
+
+test('el despacho se persiste por id de orden y permite revertir a pendiente', () => {
+  const values = new Map();
+  const storage = {
+    getItem: key => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value)
+  };
+  const store = new OrdenDespachoStore(storage);
+  assert.equal(store.setReady('orden-1', true), true);
+  assert.deepEqual([...new OrdenDespachoStore(storage).getReadyOrderIds()], ['orden-1']);
+  assert.equal(store.setReady('orden-1', false), false);
+  assert.deepEqual([...store.getReadyOrderIds()], []);
+});
+
+test('el despacho se elimina al cobrar la factura y se conserva si falla el pago', async () => {
+  const store = new OrdenDespachoStore({ getItem: () => null, setItem() {} });
+  store.setReady('orden-2', true);
+  const invoice = { idFactura: 'factura-2', idOrden: 'orden-2', total: 5 };
+  const details = [{ tipoPago: 'EFECTIVO', monto: 5 }];
+  const failingController = new CafefeController({ ordenDespachoStore: store, pagoDAO: { create: async () => { throw new Error('Backend no disponible'); } } });
+  await assert.rejects(failingController.registrarPago({ factura: invoice, detalles: details }), /Backend no disponible/);
+  assert.deepEqual([...store.getReadyOrderIds()], ['orden-2']);
+
+  const controller = new CafefeController({ ordenDespachoStore: store, pagoDAO: { create: async () => ({ idPago: 'pago-2' }) } });
+  await controller.registrarPago({ factura: invoice, detalles: details });
+  assert.deepEqual([...store.getReadyOrderIds()], []);
 });

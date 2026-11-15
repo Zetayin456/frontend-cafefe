@@ -6,12 +6,13 @@ import { EmpleadoDAO } from './empleado_dao.js';
 import { FacturaDAO } from './factura_dao.js';
 import { OrdenDAO } from './orden_dao.js';
 import { PagoDAO } from './pago_dao.js';
+import { OrdenDespachoStore } from './orden_despacho_store.js';
 import { ProductoDAO } from './producto_dao.js';
 import { TipoProductoDAO } from './tipo_producto_dao.js';
 
 export class CafefeController {
-  constructor({ empleadoDAO = new EmpleadoDAO(), productoDAO = new ProductoDAO(), tipoProductoDAO = new TipoProductoDAO(), cajaDAO = new CajaDAO(), ordenDAO = new OrdenDAO(), facturaDAO = new FacturaDAO(), pagoDAO = new PagoDAO() } = {}) {
-    Object.assign(this, { empleadoDAO, productoDAO, tipoProductoDAO, cajaDAO, ordenDAO, facturaDAO, pagoDAO });
+  constructor({ empleadoDAO = new EmpleadoDAO(), productoDAO = new ProductoDAO(), tipoProductoDAO = new TipoProductoDAO(), cajaDAO = new CajaDAO(), ordenDAO = new OrdenDAO(), facturaDAO = new FacturaDAO(), pagoDAO = new PagoDAO(), ordenDespachoStore = new OrdenDespachoStore() } = {}) {
+    Object.assign(this, { empleadoDAO, productoDAO, tipoProductoDAO, cajaDAO, ordenDAO, facturaDAO, pagoDAO, ordenDespachoStore });
   }
   async loginEmpleado(nombre, uuid) { return this.empleadoDAO.login(nombre, uuid); }
   async cargarTiposProducto() { return (await this.tipoProductoDAO.findAll()).datos.filter(item => item.activo); }
@@ -24,6 +25,8 @@ export class CafefeController {
     return this.ordenDAO.create(order);
   }
   async cargarOrdenesPendientes() { return this.ordenDAO.findPending(); }
+  obtenerOrdenesListas() { return this.ordenDespachoStore.getReadyOrderIds(); }
+  actualizarDespachoOrden(idOrden, lista) { return this.ordenDespachoStore.setReady(idOrden, lista); }
   async cargarFacturasPendientes() { return this.facturaDAO.findPending(); }
   async crearFactura({ orden, idCaja, idEmpleadoRol, cliente, observaciones }) {
     if (!orden?.idOrden || !idCaja || !idEmpleadoRol) throw new TypeError('La orden, una caja activa y el rol de cajero son obligatorios.');
@@ -37,7 +40,9 @@ export class CafefeController {
     if (pagos.some(detail => !Number.isFinite(detail.monto) || detail.monto <= 0)) throw new TypeError('Todos los montos deben ser mayores que cero.');
     const toCents = value => Math.round(Number(value) * 100);
     if (pagos.reduce((sum, detail) => sum + toCents(detail.monto), 0) !== toCents(factura.total)) throw new TypeError('La suma de los medios de pago debe coincidir con el total de la factura.');
-    return this.pagoDAO.create({ idFactura: factura.idFactura, observaciones, detalles: pagos });
+    const pago = await this.pagoDAO.create({ idFactura: factura.idFactura, observaciones, detalles: pagos });
+    if (factura.idOrden) this.ordenDespachoStore.setReady(factura.idOrden, false);
+    return pago;
   }
 }
 

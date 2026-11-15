@@ -1,8 +1,8 @@
-import { emit, escapeHTML } from '../boundary_utils.js';
+import { emit, escapeHTML, productName } from '../boundary_utils.js';
 
 export class FacturaForm extends HTMLElement {
   set controller(value) { this._controller = value; }
-  set context(value) { this.order = value.order; this.employeeRoleId = value.employeeRoleId; if (this.isConnected) this.loadBoxes(); }
+  set context(value) { this.order = value.order; this.employeeRoleId = value.employeeRoleId; this.productsById = value.productsById || new Map(); if (this.isConnected) this.loadBoxes(); }
   async connectedCallback() { this.renderLoading(); await this.loadBoxes(); }
   renderLoading() { this.innerHTML = '<section class="panel"><p>Cargando cajas activas…</p></section>'; }
   async loadBoxes() {
@@ -11,7 +11,7 @@ export class FacturaForm extends HTMLElement {
     catch (error) { this.innerHTML = `<div class="empty" role="alert">No se pudieron cargar cajas: ${escapeHTML(error.message)}</div>`; }
   }
   render() {
-    this.innerHTML = `<section class="panel"><span class="eyebrow">Nueva factura</span><h2>Orden #${escapeHTML(this.order.idOrden)} · ${escapeHTML(this.order.cliente)}</h2><form><div class="field"><label for="invoice-customer">Cliente</label><input id="invoice-customer" name="cliente" value="${escapeHTML(this.order.cliente)}" maxlength="120"></div><div class="field"><label for="invoice-box">Caja activa</label><select id="invoice-box" name="idCaja" required>${this.boxes.map(box => `<option value="${escapeHTML(box.idCaja)}">${escapeHTML(box.nombre)}</option>`).join('')}</select></div><div class="field"><label for="invoice-observations">Observaciones</label><input id="invoice-observations" name="observaciones" value="Venta local"></div><button class="btn" ${this.boxes.length && this.employeeRoleId ? '' : 'disabled'}>Crear factura</button><p role="alert" class="form-note"></p></form></section>`;
+    this.innerHTML = `<section class="panel"><span class="eyebrow">Nueva factura</span><h2>Orden #${escapeHTML(this.order.idOrden)} · ${escapeHTML(this.order.cliente)}</h2><div class="invoice-order-lines">${(this.order.productos || []).map(item => `<div class="list-row"><span>${escapeHTML(item.cantidad)} × ${escapeHTML(productName(item, this.productsById))}${item.observaciones ? ` · ${escapeHTML(item.observaciones)}` : ''}</span></div>`).join('')}</div><form><div class="field"><label for="invoice-customer">Cliente</label><input id="invoice-customer" name="cliente" value="${escapeHTML(this.order.cliente)}" maxlength="120"></div><div class="field"><label for="invoice-box">Caja activa</label><select id="invoice-box" name="idCaja" required>${this.boxes.map(box => `<option value="${escapeHTML(box.idCaja)}">${escapeHTML(box.nombre)}</option>`).join('')}</select></div><div class="field"><label for="invoice-observations">Observaciones</label><input id="invoice-observations" name="observaciones" value="Venta local"></div><button class="btn" ${this.boxes.length && this.employeeRoleId ? '' : 'disabled'}>Crear factura</button><p role="alert" class="form-note"></p></form></section>`;
     this.querySelector('form').addEventListener('submit', event => this.submit(event));
   }
   async submit(event) {
