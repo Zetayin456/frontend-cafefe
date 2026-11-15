@@ -1,0 +1,28 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Iniciar Cafefe (frontend)",
+      "type": "process",
+      "command": "py",
+      "args": [
+        "-m",
+        "http.server",
+        "5500",
+        "--directory",
+        "public_html"
+      ],
+      "isBackground": true,
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      }
+    }
+  ]
+}

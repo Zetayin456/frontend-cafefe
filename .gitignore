@@ -1,0 +1,42 @@
+# Secretos y configuracion local (conserva plantillas de ejemplo)
+.env
+.env.*
+!.env.example
+!.env.*.example
+.npmrc
+!.npmrc.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencias y salidas generadas
+node_modules/
+coverage/
+dist/
+build/
+.cache/
+
+# Archivos temporales y logs locales
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Configuracion personal del editor; conserva la tarea compartida para iniciar el frontend.
+.vscode/*
+!.vscode/tasks.json
+.idea/
+.history/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Guia local de ejecucion (no forma parte del entregable del frontend)
+/GUIA_EJECUCION_FRONTEND.pdf
