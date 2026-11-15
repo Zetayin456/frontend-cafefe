@@ -1,4 +1,4 @@
-const CACHE = 'cafefe-bce-shell-v11';
+const CACHE = 'cafefe-bce-shell-v15';
 const SHELL = [
   './', './index.html', './resources/estilos/styles.css', './manifest.webmanifest',
   './resources/iconos/icon.svg', './resources/iconos/icon-192.png', './resources/iconos/icon-512.png', './js/app.js',

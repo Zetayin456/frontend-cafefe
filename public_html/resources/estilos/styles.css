@@ -30,3 +30,70 @@
 }
 .order-detail .dispatch-toggle{width:100%;margin-top:18px}
 .order-detail .dispatch-toggle[aria-pressed="true"]{background:#f5eadc;color:#7d5638;border:1px solid #ead5b3}
+
+/* Impresión del ticket incluso cuando su contenido está aislado en Shadow DOM. */
+@page{size:auto;margin:12mm}
+@media print{
+  html,body{width:100%;min-height:0!important;margin:0!important;background:#fff!important}
+  body *{visibility:hidden!important}
+  ticket-view{display:block!important;position:fixed!important;inset:0!important;width:100%!important;height:100%!important;overflow:visible!important;background:#fff!important;visibility:visible!important;z-index:2147483647!important}
+  ticket-view *{visibility:visible!important}
+}
+
+/* Mensajes de caja: ayuda neutra y errores de validación claramente distintos. */
+.form-message{margin:12px 0 0}
+.form-message.form-help{padding:0;color:#75817a;font-size:.85rem;line-height:1.5}
+.form-message.error-banner{padding:12px 16px;background:#fde8e8;border:2px solid #dc2626;border-radius:10px;color:#991b1b;font-size:.97rem;font-weight:700;line-height:1.45;animation:error-banner-enter .38s ease-out}
+@keyframes error-banner-enter{0%{opacity:0;transform:translateY(-5px)}65%{opacity:1;transform:translateY(1px)}100%{transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.form-message.error-banner{animation:none}}
+
+/* Ajustes de ancho para Caja y Pedido en tablets y móviles. */
+@media(max-width:900px){
+  .split{grid-template-columns:minmax(0,1fr);width:100%;max-width:100%;gap:18px}
+  .split>*,.split .order-grid,.split .order-card{min-width:0;max-width:100%}
+  .split .order-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:640px){
+  .hero,.category-row,.product-grid,.layout-two{grid-template-columns:minmax(0,1fr)}
+  .hero,.hero>*,.hero-art,.category-row,.product-grid,.layout-two,.layout-two>*{min-width:0;max-width:100%}
+  .hero-art{width:100%;overflow:hidden}
+  .category-row,.product-grid{width:100%}
+}
+
+/* Tokens compartidos por la hoja global y los Shadow DOM. */
+:root{
+  --color-text:#20342e;
+  --color-forest:#173c32;
+  --color-forest-soft:#285b4b;
+  --color-cream:#f8f7f2;
+  --color-terracotta:#d98250;
+  --color-muted:#75817a;
+  --color-line:#e7e7df;
+  --font-ui:'DM Sans',system-ui,sans-serif;
+  --font-display:Georgia,serif;
+  --radius-control:11px;
+  --radius-small:9px;
+  --radius-card:18px;
+  --radius-pill:999px;
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-5:24px;
+  --space-6:32px;
+  font-family:var(--font-ui);
+  color:var(--color-text);
+  background:var(--color-cream);
+  --green:var(--color-forest);
+  --green2:var(--color-forest-soft);
+  --cream:var(--color-cream);
+  --orange:var(--color-terracotta);
+  --muted:var(--color-muted);
+  --line:var(--color-line);
+  --white:#fff;
+}
+.hero h1,.page-heading h1,.section-head h2,.cart-layout h2,.login-wrap h1{font-family:var(--font-display)}
+.panel,.order-card{border-radius:var(--radius-card)}
+.btn{border-radius:var(--radius-control)}
+.badge{border-radius:var(--radius-pill)}
+.field input,.field select{font-family:var(--font-ui);border-radius:var(--radius-control)}

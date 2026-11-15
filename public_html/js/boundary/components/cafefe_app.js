@@ -76,7 +76,7 @@ export class CafefeApp extends HTMLElement {
   }
   async onPaymentRequest(event) {
     const boundary = event.target; boundary.setPending(true);
-    try { await this._controller.registrarPago(event.detail); await this.showTicket(event.detail.factura.idFactura); }
+    try { const pago = await this._controller.registrarPago(event.detail); const details = pago?.detalles?.length ? pago.detalles : event.detail.detalles; await this.showTicket(event.detail.factura.idFactura, details); }
     catch (error) { boundary.setError(error.message || error.mensaje || 'No se pudo registrar el pago.'); }
   }
   async renderRoute() {
@@ -143,9 +143,22 @@ export class CafefeApp extends HTMLElement {
     try { const invoice = await this._controller.consultarFactura(idFactura); const form = document.createElement('pago-form'); form.productsById = this.productCatalogById; form.invoice = invoice; panel.replaceChildren(form); form.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     catch (error) { this.toast(`No se pudo abrir la factura: ${error.message}`); }
   }
-  async showTicket(idFactura) {
+  async showTicket(idFactura, paymentDetails = []) {
     if (!this.querySelector('#cashier-detail')) return;
-    try { await this.renderRoute(); const invoice = await this._controller.consultarFactura(idFactura); const panel = this.querySelector('#cashier-detail'); if (!panel) return; const ticket = document.createElement('ticket-view'); ticket.invoice = invoice; panel.replaceChildren(ticket); ticket.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    try {
+      await this.renderRoute();
+      const [invoice, products] = await Promise.all([
+        this._controller.consultarFactura(idFactura),
+        this.productCatalogById.size ? Promise.resolve(null) : this._controller.cargarProductos().catch(() => [])
+      ]);
+      if (products) this.productCatalogById = new Map(products.map(product => [String(product.idProducto), product]));
+      const panel = this.querySelector('#cashier-detail'); if (!panel) return;
+      const ticket = document.createElement('ticket-view');
+      ticket.productsById = this.productCatalogById;
+      ticket.paymentDetails = paymentDetails;
+      ticket.invoice = invoice;
+      panel.replaceChildren(ticket); ticket.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     catch (error) { this.toast(`Pago registrado; no se pudo cargar el ticket: ${error.message}`); }
   }
   async install() {
