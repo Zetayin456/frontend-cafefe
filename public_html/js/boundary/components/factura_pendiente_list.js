@@ -1,4 +1,4 @@
-import { emit, escapeHTML, formatMoney, lineName } from './boundary_utils.js';
+import { emit, escapeHTML, formatMoney, lineName } from '../boundary_utils.js';
 
 export class FacturaPendienteList extends HTMLElement {
   set controller(value) { this._controller = value; }

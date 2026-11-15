@@ -1,4 +1,4 @@
-import { escapeHTML, formatMoney, lineName } from './boundary_utils.js';
+import { escapeHTML, formatMoney, lineName } from '../boundary_utils.js';
 
 export class TicketView extends HTMLElement {
   set invoice(value) { this._invoice = value; if (this.isConnected) this.render(); }

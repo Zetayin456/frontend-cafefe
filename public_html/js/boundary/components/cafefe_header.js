@@ -1,4 +1,4 @@
-import { emit, roleIncludes } from './boundary_utils.js';
+import { emit, roleIncludes } from '../boundary_utils.js';
 
 export class CafefeHeader extends HTMLElement {
   connectedCallback() {

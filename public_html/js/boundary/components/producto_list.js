@@ -1,4 +1,4 @@
-import { emit, escapeHTML, formatMoney } from './boundary_utils.js';
+import { emit, escapeHTML, formatMoney } from '../boundary_utils.js';
 
 export class ProductoList extends HTMLElement {
   constructor() { super(); this.products = []; this.selectedType = null; this.selectedTypeName = ''; }

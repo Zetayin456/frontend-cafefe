@@ -1,4 +1,4 @@
-import { emit, escapeHTML, formatMoney, lineName } from './boundary_utils.js';
+import { emit, escapeHTML, formatMoney, lineName } from '../boundary_utils.js';
 
 export class PagoForm extends HTMLElement {
   set invoice(value) { this._invoice = value; if (this.isConnected) this.render(); }

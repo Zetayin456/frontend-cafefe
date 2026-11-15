@@ -1,17 +1,17 @@
 import { cafefeController } from './control/cafefe_controller.js';
-import './boundary/cafefe_header.js';
-import './boundary/login_view.js';
-import './boundary/tipo_producto_list.js';
-import './boundary/producto_list.js';
-import './boundary/orden_cart.js';
-import './boundary/catalog_view.js';
-import './boundary/orden_pendiente_list.js';
-import './boundary/orden_detail.js';
-import './boundary/factura_pendiente_list.js';
-import './boundary/factura_form.js';
-import './boundary/pago_form.js';
-import './boundary/ticket_view.js';
-import './boundary/cafefe_app.js';
+import './boundary/components/cafefe_header.js';
+import './boundary/components/login_view.js';
+import './boundary/components/tipo_producto_list.js';
+import './boundary/components/producto_list.js';
+import './boundary/components/orden_cart.js';
+import './boundary/components/catalog_view.js';
+import './boundary/components/orden_pendiente_list.js';
+import './boundary/components/orden_detail.js';
+import './boundary/components/factura_pendiente_list.js';
+import './boundary/components/factura_form.js';
+import './boundary/components/pago_form.js';
+import './boundary/components/ticket_view.js';
+import './boundary/components/cafefe_app.js';
 
 document.querySelector('cafefe-app').controller = cafefeController;
 

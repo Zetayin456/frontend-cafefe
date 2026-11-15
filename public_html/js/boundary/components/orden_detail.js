@@ -1,4 +1,4 @@
-import { escapeHTML, formatMoney, lineName } from './boundary_utils.js';
+import { escapeHTML, formatMoney, lineName } from '../boundary_utils.js';
 
 export class OrdenDetail extends HTMLElement {
   set order(value) { this._order = value; this.render(); }

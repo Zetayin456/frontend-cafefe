@@ -1,4 +1,4 @@
-import { emit, escapeHTML, formatMoney } from './boundary_utils.js';
+import { emit, escapeHTML, formatMoney } from '../boundary_utils.js';
 
 export class OrdenCart extends HTMLElement {
   constructor() { super(); this.items = []; }

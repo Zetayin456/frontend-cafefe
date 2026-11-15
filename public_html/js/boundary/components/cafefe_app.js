@@ -1,4 +1,4 @@
-import { roleIncludes } from './boundary_utils.js';
+import { roleIncludes } from '../boundary_utils.js';
 
 export class CafefeApp extends HTMLElement {
   constructor() {

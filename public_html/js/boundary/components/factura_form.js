@@ -1,4 +1,4 @@
-import { emit, escapeHTML } from './boundary_utils.js';
+import { emit, escapeHTML } from '../boundary_utils.js';
 
 export class FacturaForm extends HTMLElement {
   set controller(value) { this._controller = value; }
