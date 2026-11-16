@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pruebas visuales Cafefe</title>
+  <style>
+    :root{font:16px/1.5 system-ui,sans-serif;color:#20342e;background:#f5f4ef}body{max-width:1000px;margin:2rem auto;padding:0 1rem}h1{color:#173c32}.summary{padding:1rem;background:#fff;border-radius:12px}.pass{color:#176b3a}.fail{color:#a32020}.case{padding:.6rem;border-bottom:1px solid #ddd}cafefe-header, catalog-view, login-view, tipo-producto-list, producto-list, orden-cart, orden-pendiente-list, orden-detail, factura-pendiente-list, factura-form, pago-form, ticket-view{display:block;margin:1rem 0}.demo{background:#fff;padding:1rem;border-radius:12px}
+  </style>
+</head>
+<body>
+  <h1>Pruebas de vistas Cafefe</h1>
+  <p>Suite visual y de DOM ejecutada con ECMAScript nativo y los Web Components del proyecto.</p>
+  <section class="summary" aria-live="polite"><strong id="status">Ejecutando…</strong><ol id="results"></ol></section>
+  <section class="demo" id="fixtures">
+    <h2>Componentes renderizados</h2>
+    <cafefe-header></cafefe-header>
+    <login-view></login-view>
+    <catalog-view id="catalog"></catalog-view>
+    <tipo-producto-list></tipo-producto-list>
+    <producto-list></producto-list>
+    <orden-cart></orden-cart>
+    <orden-pendiente-list></orden-pendiente-list>
+    <orden-detail></orden-detail>
+    <factura-pendiente-list></factura-pendiente-list>
+    <factura-form></factura-form>
+    <pago-form></pago-form>
+    <ticket-view></ticket-view>
+  </section>
+  <script type="module">
+    const results = document.querySelector('#results');
+    let passed = 0, failed = 0;
+    const check = (name, fn) => {
+      const row = document.createElement('li'); row.className = 'case';
+      try { fn(); row.classList.add('pass'); row.textContent = `PASS — ${name}`; passed++; }
+      catch (error) { row.classList.add('fail'); row.textContent = `FAIL — ${name}: ${error.message}`; failed++; }
+      results.append(row);
+    };
+    const expect = (condition, message) => { if (!condition) throw new Error(message); };
+    try {
+      await import('../../public_html/js/boundary/components/cafefe_header.js');
+      await import('../../public_html/js/boundary/components/login_view.js');
+      await import('../../public_html/js/boundary/components/tipo_producto_list.js');
+      await import('../../public_html/js/boundary/components/producto_list.js');
+      await import('../../public_html/js/boundary/components/orden_cart.js');
+      await import('../../public_html/js/boundary/components/orden_pendiente_list.js');
+      await import('../../public_html/js/boundary/components/orden_detail.js');
+      await import('../../public_html/js/boundary/components/factura_pendiente_list.js');
+      await import('../../public_html/js/boundary/components/factura_form.js');
+      await import('../../public_html/js/boundary/components/pago_form.js');
+      await import('../../public_html/js/boundary/components/ticket_view.js');
+      await import('../../public_html/js/boundary/components/catalog_view.js');
+      await import('../../public_html/js/boundary/components/cafefe_app.js');
+      const { ProductoList } = await import('../../public_html/js/boundary/components/producto_list.js');
+      const { OrdenCart } = await import('../../public_html/js/boundary/components/orden_cart.js');
+      const { OrdenDetail } = await import('../../public_html/js/boundary/components/orden_detail.js');
+      check('se registran y montan todos los custom elements', () => {
+        for (const tag of ['cafefe-header','login-view','catalog-view','tipo-producto-list','producto-list','orden-cart','orden-pendiente-list','orden-detail','factura-pendiente-list','factura-form','pago-form','ticket-view','cafefe-app']) expect(customElements.get(tag), `${tag} no registrado`);
+        expect(document.querySelector('login-view h1')?.textContent.includes('Bienvenido'), 'login sin encabezado');
+        expect(document.querySelector('catalog-view h1')?.textContent.includes('Un buen café'), 'catálogo sin hero');
+      });
+      check('la lista de productos representa resultados y filtra por tipo', () => {
+        const list = new ProductoList(); list.products = [{ idProducto:'1', nombre:'Moka', precioSugerido:3, idTipoProducto:'a' },{ idProducto:'2', nombre:'Té', precioSugerido:2, idTipoProducto:'b' }];
+        list.filterByType('a','Bebidas'); expect(list.querySelectorAll('.product-card').length === 1, 'filtro incorrecto'); expect(list.textContent.includes('Moka'), 'producto ausente');
+      });
+      check('el carrito agrega y acumula productos', () => {
+        const cart = new OrdenCart(); cart.addProduct({idProducto:'1',nombre:'Moka',precioSugerido:3}); cart.addProduct({idProducto:'1',nombre:'Moka',precioSugerido:3});
+        expect(cart.items[0].cantidad === 2, 'cantidad no acumulada'); expect(cart.textContent.includes('Moka'), 'carrito no renderizado');
+      });
+      check('el detalle de cocina muestra orden y acción de despacho', () => {
+        const detail = new OrdenDetail(); detail.order={idOrden:'42',cliente:'Ana',total:3,productos:[{nombreProducto:'Moka',cantidad:1,precio:3}]};
+        expect(detail.textContent.includes('Ana') && detail.textContent.includes('Moka'), 'detalle incompleto'); expect(detail.querySelector('[data-toggle-dispatch]'), 'acción de despacho ausente');
+      });
+    } catch (error) {
+      const row=document.createElement('li'); row.className='case fail'; row.textContent=`FAIL — carga de componentes: ${error.message}`; results.append(row); failed++;
+    }
+    document.querySelector('#status').textContent = `${passed} PASS · ${failed} FAIL`;
+    document.querySelector('#status').className = failed ? 'fail' : 'pass';
+  </script>
+</body>
+</html>
