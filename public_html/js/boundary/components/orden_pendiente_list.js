@@ -1,50 +1,40 @@
-import { emit, escapeHTML, formatMoney, orderClientName, productName } from '../boundary_utils.js';
+import { emit, escapeHTML, formatMoney, initBoundary, orderClientName, productName, renderBoundary } from '../boundary_utils.js';
+
+export const visibleOrdersForMode = (orders, mode, dispatchedIds = new Set()) => mode === 'invoice'
+  ? [...(orders || [])]
+  : (orders || []).filter(order => !dispatchedIds.has(String(order.idOrden)));
 
 export class OrdenPendienteList extends HTMLElement {
-  set controller(value) { this._controller = value; }
-  async connectedCallback() {
-    this._mode ||= this.getAttribute('mode');
-    this.innerHTML = '<div class="empty">Cargando órdenes…</div>';
-    try {
-      const [ordersResult, productsResult] = await Promise.allSettled([
-        this._controller.cargarOrdenesPendientes(),
-        this._controller.cargarProductos()
-      ]);
-      if (ordersResult.status === 'rejected') throw ordersResult.reason;
-      this.orders = ordersResult.value;
-      this.products = productsResult.status === 'fulfilled' ? productsResult.value : [];
-      this.productsById = new Map(this.products.map(product => [String(product.idProducto), product]));
-      this.catalogUnavailable = productsResult.status === 'rejected';
-      emit(this, 'catalogo-productos-cargado', { productsById: this.productsById });
-      this.render();
-    }
-    catch (error) { this.innerHTML = `<div class="empty" role="alert">No se pudieron cargar las órdenes: ${escapeHTML(error.message)}</div>`; }
+  constructor() { super(); initBoundary(this, 'orden-pendiente-list.css'); this.orders = []; this.productsById = new Map(); this.readyOrderIds = new Set(); }
+  set items(value) { this.orders = Array.isArray(value) ? value : []; this.render(); }
+  set products(value) { this.productsById = value instanceof Map ? value : new Map((value || []).map(item => [String(item.idProducto), item])); this.render(); }
+  set dispatchedIds(value) { this.readyOrderIds = value instanceof Set ? value : new Set(value || []); this.render(); }
+  set mode(value) { this._mode = value; this.render(); }
+  connectedCallback() { this._mode ||= this.getAttribute('mode'); this.render(); }
+  setOrderReady(id, ready) {
+    const next = new Set(this.readyOrderIds);
+    if (ready) next.add(String(id)); else next.delete(String(id));
+    this.dispatchedIds = next;
   }
-  set mode(value) { this._mode = value; if (this.orders) this.render(); }
-  setOrderReady() { this.render(); }
   render() {
-    const readyOrderIds = this._controller.obtenerOrdenesListas();
-    const catalogNotice = this.catalogUnavailable
-      ? '<p class="form-note" role="status">No se pudo consultar el catálogo; se muestran los nombres incluidos en la orden cuando están disponibles.</p>'
-      : '';
-    this.innerHTML = this.orders.length ? `${catalogNotice}<div class="order-grid">${this.orders.map(order => {
+    if (!this.isConnected) return;
+    const visibleOrders = visibleOrdersForMode(this.orders, this._mode, this.readyOrderIds);
+    const content = visibleOrders.length ? `<div class="order-grid">${visibleOrders.map(order => {
       const selected = this._mode !== 'invoice' && String(order.idOrden) === this.selectedOrderId;
-      const ready = readyOrderIds.has(String(order.idOrden));
+      const ready = this.readyOrderIds.has(String(order.idOrden));
       const status = ready ? 'LISTA / DESPACHADA' : order.estado || 'PENDIENTE_COCINA';
       return `<article class="order-card${selected ? ' selected' : ''}"><button class="record-select" data-select-order="${escapeHTML(order.idOrden)}" aria-pressed="${selected}"><span><strong>Orden #${escapeHTML(order.idOrden)}</strong><small>${escapeHTML(orderClientName(order))} · ${order.productos.length} productos</small></span><span class="badge${ready ? ' green' : ''}">${escapeHTML(status)}</span></button><div class="total"><span>Total</span><span>${formatMoney(order.total)}</span></div><p>${order.productos.map(item => `${escapeHTML(item.cantidad)} × ${escapeHTML(productName(item, this.productsById))}`).join(' · ')}</p>${this._mode === 'invoice' ? `<button class="btn small" data-create-invoice="${escapeHTML(order.idOrden)}">Generar factura</button>` : ''}</article>`;
-    }).join('')}</div>` : '<div class="empty">No hay órdenes pendientes.</div>';
-    this.onclick = event => {
-      const invoice = event.target.closest('[data-create-invoice]');
-      if (invoice) { const order = this.orders.find(item => String(item.idOrden) === invoice.dataset.createInvoice); if (order) emit(this, 'orden-seleccionada', { order, productsById: this.productsById, facturar: true }); return; }
-      const select = event.target.closest('[data-select-order]');
-      if (select) {
-        const order = this.orders.find(item => String(item.idOrden) === select.dataset.selectOrder);
-        if (order) {
-          this.selectedOrderId = String(order.idOrden);
-          this.render();
-          emit(this, 'orden-seleccionada', { order, productsById: this.productsById });
-        }
-      }
+    }).join('')}</div>` : `<div class="empty">${this._mode === 'invoice' ? 'No hay órdenes por facturar.' : 'No hay órdenes pendientes.'}</div>`;
+    renderBoundary(this, content);
+    this._boundaryRoot.onclick = event => {
+      const invoiceButton = event.target.closest('[data-create-invoice]');
+      if (invoiceButton) { const order = this.orders.find(item => String(item.idOrden) === invoiceButton.dataset.createInvoice); if (order) emit(this, 'orden-seleccionada', { order, facturar: true }); return; }
+      const selectButton = event.target.closest('[data-select-order]');
+      if (!selectButton) return;
+      const order = this.orders.find(item => String(item.idOrden) === selectButton.dataset.selectOrder);
+      if (!order) return;
+      this.selectedOrderId = String(order.idOrden); this.render();
+      emit(this, 'orden-seleccionada', { order });
     };
   }
 }

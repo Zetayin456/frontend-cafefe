@@ -14,6 +14,7 @@
   <section class="summary" aria-live="polite"><strong id="status">Ejecutando…</strong><ol id="results"></ol></section>
   <section class="demo" id="fixtures">
     <h2>Componentes renderizados</h2>
+    <cafefe-app></cafefe-app>
     <cafefe-header></cafefe-header>
     <login-view></login-view>
     <catalog-view id="catalog"></catalog-view>
@@ -54,22 +55,50 @@
       const { ProductoList } = await import('../../public_html/js/boundary/components/producto_list.js');
       const { OrdenCart } = await import('../../public_html/js/boundary/components/orden_cart.js');
       const { OrdenDetail } = await import('../../public_html/js/boundary/components/orden_detail.js');
+      check('cafefe-app contiene navegación, zona de vistas y estado accesible', () => {
+        const app = document.querySelector('cafefe-app'); expect(app.shadowRoot.querySelector('cafefe-header'), 'cabecera ausente'); expect(app.shadowRoot.querySelector('main#view'), 'zona de vistas ausente'); expect(app.shadowRoot.querySelector('[role="status"]'), 'estado accesible ausente');
+      });
       check('se registran y montan todos los custom elements', () => {
         for (const tag of ['cafefe-header','login-view','catalog-view','tipo-producto-list','producto-list','orden-cart','orden-pendiente-list','orden-detail','factura-pendiente-list','factura-form','pago-form','ticket-view','cafefe-app']) expect(customElements.get(tag), `${tag} no registrado`);
-        expect(document.querySelector('login-view h1')?.textContent.includes('Bienvenido'), 'login sin encabezado');
-        expect(document.querySelector('catalog-view h1')?.textContent.includes('Un buen café'), 'catálogo sin hero');
+        expect(document.querySelector('login-view')?.shadowRoot.querySelector('h1')?.textContent.includes('Bienvenido'), 'login sin encabezado');
+        expect(document.querySelector('catalog-view')?.shadowRoot.querySelector('h1')?.textContent.includes('Un buen café'), 'catálogo sin hero');
+      });
+      check('categorías activas e inactivas se distinguen', () => {
+        const list = document.querySelector('tipo-producto-list'); list.categories=[{idTipoProducto:'a',nombre:'Café',activo:true},{idTipoProducto:'b',nombre:'Oculto',activo:false}];
+        expect(list.shadowRoot.querySelectorAll('[data-id]').length === 1, 'se mostró una categoría inactiva'); expect(list.shadowRoot.textContent.includes('Café'), 'categoría activa ausente');
       });
       check('la lista de productos representa resultados y filtra por tipo', () => {
-        const list = new ProductoList(); list.products = [{ idProducto:'1', nombre:'Moka', precioSugerido:3, idTipoProducto:'a' },{ idProducto:'2', nombre:'Té', precioSugerido:2, idTipoProducto:'b' }];
-        list.filterByType('a','Bebidas'); expect(list.querySelectorAll('.product-card').length === 1, 'filtro incorrecto'); expect(list.textContent.includes('Moka'), 'producto ausente');
+        const list = document.createElement('producto-list'); document.querySelector('#fixtures').append(list); list.items = [{ idProducto:'1', nombre:'Moka', precioSugerido:3, idTipoProducto:'a', activo:true },{ idProducto:'2', nombre:'Té', precioSugerido:2, idTipoProducto:'b', activo:true },{ idProducto:'3', nombre:'Agotado', precioSugerido:2, idTipoProducto:'a', activo:false }];
+        list.selectedType = 'a'; expect(list.shadowRoot.querySelectorAll('.product-card').length === 1, 'filtro incorrecto'); expect(list.shadowRoot.textContent.includes('Moka'), 'producto ausente');
+        let added; list.addEventListener('producto-agregado', event => { added=event.detail.product; }); list.shadowRoot.querySelector('[data-product]').click(); expect(added?.idProducto === '1', 'evento de agregar no emitido');
       });
       check('el carrito agrega y acumula productos', () => {
-        const cart = new OrdenCart(); cart.addProduct({idProducto:'1',nombre:'Moka',precioSugerido:3}); cart.addProduct({idProducto:'1',nombre:'Moka',precioSugerido:3});
-        expect(cart.items[0].cantidad === 2, 'cantidad no acumulada'); expect(cart.textContent.includes('Moka'), 'carrito no renderizado');
+        const cart = document.createElement('orden-cart'); document.querySelector('#fixtures').append(cart); cart.addProduct({idProducto:'1',nombre:'Moka',precioSugerido:3}); cart.addProduct({idProducto:'1',nombre:'Moka',precioSugerido:3});
+        expect(cart.items[0].cantidad === 2, 'cantidad no acumulada'); expect(cart.shadowRoot.textContent.includes('Moka'), 'carrito no renderizado');
       });
       check('el detalle de cocina muestra orden y acción de despacho', () => {
-        const detail = new OrdenDetail(); detail.order={idOrden:'42',cliente:'Ana',total:3,productos:[{nombreProducto:'Moka',cantidad:1,precio:3}]};
-        expect(detail.textContent.includes('Ana') && detail.textContent.includes('Moka'), 'detalle incompleto'); expect(detail.querySelector('[data-toggle-dispatch]'), 'acción de despacho ausente');
+        const detail = document.createElement('orden-detail'); document.querySelector('#fixtures').append(detail); detail.order={idOrden:'42',cliente:'Ana',total:3,productos:[{nombreProducto:'Moka',cantidad:1,precio:3}]};
+        expect(detail.shadowRoot.textContent.includes('Ana') && detail.shadowRoot.textContent.includes('Moka'), 'detalle incompleto'); expect(detail.shadowRoot.querySelector('[data-toggle-dispatch]'), 'acción de despacho ausente');
+        let dispatch; detail.addEventListener('despacho-solicitado', event => { dispatch=event.detail; }); detail.shadowRoot.querySelector('[data-toggle-dispatch]').click(); expect(dispatch?.idOrden === '42' && dispatch.ready, 'evento de despacho incorrecto');
+      });
+      check('listas y formularios de factura reciben datos por propiedades', () => {
+        const orderList=document.querySelector('orden-pendiente-list'); orderList.items=[{idOrden:'7',cliente:'Ana',estado:'PENDIENTE',total:3,productos:[]}];
+        let selected; orderList.addEventListener('orden-seleccionada', event => { selected=event.detail.order; }); orderList.shadowRoot.querySelector('[data-select-order]').click(); expect(selected?.idOrden === '7', 'selección de orden no emitida');
+        const invoices=document.querySelector('factura-pendiente-list'); invoices.items=[{idFactura:'f7',idOrden:'7',cliente:'Ana',estado:'PENDIENTE',total:3,detalle:[]}];
+        const form=document.querySelector('factura-form'); form.context={order:{idOrden:'7',cliente:'Ana',productos:[]},employeeRoleId:'rol-1'}; form.activeBoxes=[{idCaja:'c1',nombre:'Caja 1',activo:true}];
+        expect(orderList.shadowRoot.textContent.includes('Orden #7'), 'orden no renderizada'); expect(invoices.shadowRoot.textContent.includes('Factura #f7'), 'factura no renderizada'); expect(form.shadowRoot.querySelector('#invoice-customer')?.value === 'Ana', 'cliente incorrecto en factura');
+        form.context={order:{idOrden:'8',cliente:'Sol',productos:[]},employeeRoleId:'rol-1'}; expect(form.shadowRoot.querySelector('#invoice-customer')?.value === 'Sol', 'quedó pegado el cliente anterior');
+        let invoiceRequest; form.addEventListener('factura-solicitada', event => { invoiceRequest=event.detail; }); form.shadowRoot.querySelector('#invoice-customer').value='Luz'; form.shadowRoot.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); expect(invoiceRequest?.cliente === 'Luz' && invoiceRequest.orden.idOrden === '8', 'payload de factura incorrecto');
+      });
+      check('pago y ticket representan saldo, factura y pago capturado', () => {
+        const form=document.querySelector('pago-form'); form.invoice={idFactura:'f9',idOrden:'9',cliente:'Sol',total:8,detalle:[{nombreProducto:'Moka',cantidad:1,precio:8}]};
+        expect(form.shadowRoot.textContent.includes('Saldo pendiente'), 'saldo ausente'); expect(form.shadowRoot.querySelector('[name="monto"]')?.value === '8.00', 'monto inicial incorrecto');
+        form.shadowRoot.querySelector('[data-add-payment]').click(); const amounts=form.shadowRoot.querySelectorAll('[name="monto"]'); amounts[0].value='3.00'; amounts[1].value='5.00'; form.shadowRoot.querySelector('.payment-lines').dispatchEvent(new Event('input',{bubbles:true}));
+        expect(form.shadowRoot.querySelector('.payment-submit').disabled === false, 'la suma exacta no habilita el registro');
+        let payment; form.addEventListener('pago-solicitado', event => { payment=event.detail; }); form.shadowRoot.querySelector('form').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+        expect(payment?.detalles.length === 2 && payment.detalles[0].monto === 3 && payment.detalles[1].monto === 5, 'payload del pago dividido incorrecto');
+        const ticket=document.querySelector('ticket-view'); ticket.paymentDetails=[{tipoPago:'QR',monto:8}]; ticket.invoice={idFactura:'f9',cliente:'Sol',total:8,detalle:[{nombreProducto:'Moka',cantidad:1,precio:8}]};
+        expect(ticket.shadowRoot.textContent.includes('Factura #f9') && ticket.shadowRoot.textContent.includes('QR'), 'ticket no refleja el pago');
       });
     } catch (error) {
       const row=document.createElement('li'); row.className='case fail'; row.textContent=`FAIL — carga de componentes: ${error.message}`; results.append(row); failed++;

@@ -1,6 +1,11 @@
-const CACHE = 'cafefe-bce-shell-v15';
+const CACHE_PREFIX = 'cafefe-app-shell-';
+const CACHE_NAME = `${CACHE_PREFIX}v16`;
 const SHELL = [
-  './', './index.html', './resources/estilos/styles.css', './manifest.webmanifest',
+  './', './index.html', './resources/estilos/styles.css',
+  './resources/estilos/components/cafefe-app.css', './resources/estilos/components/cafefe-header.css', './resources/estilos/components/catalog-view.css',
+  './resources/estilos/components/login-view.css', './resources/estilos/components/tipo-producto-list.css', './resources/estilos/components/producto-list.css',
+  './resources/estilos/components/orden-cart.css', './resources/estilos/components/orden-pendiente-list.css', './resources/estilos/components/orden-detail.css',
+  './resources/estilos/components/factura-pendiente-list.css', './resources/estilos/components/factura-form.css', './resources/estilos/components/pago-form.css', './manifest.webmanifest',
   './resources/iconos/icon.svg', './resources/iconos/icon-192.png', './resources/iconos/icon-512.png', './js/app.js',
   './js/entity/default_response.js', './js/entity/default_error.js', './js/entity/producto.js', './js/entity/tipo_producto.js',
   './js/entity/caja.js', './js/entity/empleado.js', './js/entity/empleado_rol.js', './js/entity/orden.js',
@@ -12,10 +17,45 @@ const SHELL = [
   './js/boundary/components/orden_pendiente_list.js', './js/boundary/components/orden_detail.js', './js/boundary/components/factura_pendiente_list.js',
   './js/boundary/components/factura_form.js', './js/boundary/components/pago_form.js', './js/boundary/components/ticket_view.js'
 ];
-self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())));
-self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('cafefe-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
+const SHELL_URLS = new Set(SHELL.map(path => new URL(path, self.registration.scope).href));
+const APP_INDEX = new URL('./index.html', self.registration.scope).href;
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME)
+    .then(cache => cache.addAll([...SHELL_URLS]))
+    .then(() => self.skipWaiting()));
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys()
+    .then(keys => Promise.all(keys
+      .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+      .map(key => caches.delete(key))))
+    .then(() => self.clients.claim()));
+});
+
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin || event.request.method !== 'GET') return;
-  event.respondWith(fetch(event.request).then(response => { if (response.ok) { const copy = response.clone(); caches.open(CACHE).then(cache => cache.put(event.request, copy)); } return response; }).catch(() => caches.match(event.request).then(response => response || (event.request.mode === 'navigate' ? caches.match('./index.html') : Response.error()))));
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const requestURL = new URL(request.url);
+  if (requestURL.origin !== self.location.origin) return;
+
+  const isAppNavigation = request.mode === 'navigate';
+  const shellURL = isAppNavigation ? APP_INDEX : SHELL_URLS.has(requestURL.href) ? requestURL.href : null;
+  if (!shellURL) return;
+
+  event.respondWith(caches.open(CACHE_NAME).then(async cache => {
+    const cached = await cache.match(shellURL);
+    if (cached) return cached;
+
+    try {
+      const response = await fetch(request);
+      if (response.ok && response.type !== 'opaque') await cache.put(shellURL, response.clone());
+      return response;
+    } catch (error) {
+      if (isAppNavigation) return cache.match(APP_INDEX).then(fallback => fallback || Response.error());
+      throw error;
+    }
+  }));
 });

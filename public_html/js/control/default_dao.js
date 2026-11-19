@@ -15,10 +15,6 @@ export class DefaultDAO {
         ...options
       });
     } catch (cause) {
-      if (method === 'GET' && cause instanceof TypeError) {
-        const cached = this.readCache(path);
-        if (cached) return { payload: cached.payload, headers: new Headers(cached.total == null ? {} : { 'total-registros': cached.total }), fromCache: true };
-      }
       throw new DefaultError({ error: 'Error de conexión', mensaje: `No se pudo conectar con ${this.baseURL}: ${cause.message}`, detalle: cause });
     }
     const text = await response.text();
@@ -27,8 +23,7 @@ export class DefaultDAO {
     if (!response.ok) {
       throw new DefaultError({ error: payload?.error || payload?.message || `HTTP ${response.status}`, mensaje: payload?.mensaje || payload?.error || payload?.message || `La API respondió HTTP ${response.status}${text ? `: ${text}` : ''}`, status: response.status, detalle: payload });
     }
-    if (method === 'GET') this.writeCache(path, { payload, total: response.headers.get('total-registros') });
-    return { payload, headers: response.headers, fromCache: false };
+    return { payload, headers: response.headers };
   }
 
   async get(path = this.endpoint) { return (await this.request(path)).payload; }
@@ -59,13 +54,5 @@ export class DefaultDAO {
       first += page.datos.length;
     } while (total < 0 || first < total);
     return new DefaultResponse(all, total);
-  }
-
-  readCache(path) {
-    try { const value = localStorage.getItem(`cafefe-api:${path}`); return value === null ? null : JSON.parse(value); }
-    catch { return null; }
-  }
-  writeCache(path, value) {
-    try { localStorage.setItem(`cafefe-api:${path}`, JSON.stringify(value)); } catch { /* El dato de red se retorna aunque el cache local no esté disponible. */ }
   }
 }

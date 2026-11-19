@@ -28,3 +28,11 @@ export const employeeRoleLabel = employee => {
   return role ? role.charAt(0).toUpperCase() + role.slice(1).toLowerCase() : 'Empleado';
 };
 export const employeeGreeting = employee => `¡Hola, ${employeeRoleLabel(employee)} ${employeeFullName(employee)}!`;
+export const initBoundary = (element, stylesheet) => {
+  element._boundaryRoot = element.shadowRoot || element.attachShadow({ mode: 'open' });
+  element._boundaryStylesheet = new URL(`../../resources/estilos/components/${stylesheet}`, import.meta.url).href;
+  return element._boundaryRoot;
+};
+export const renderBoundary = (element, content) => {
+  element._boundaryRoot.innerHTML = `<link rel="stylesheet" href="${element._boundaryStylesheet}">${content}`;
+};

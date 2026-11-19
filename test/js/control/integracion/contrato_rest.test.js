@@ -39,18 +39,17 @@ test('findRange lee total-registros y convierte cada DTO en entidad', async () =
   } finally { globalThis.fetch = previousFetch; }
 });
 
-test('DefaultDAO guarda únicamente GET exitosos con su header total-registros', async () => {
-  const previousFetch = globalThis.fetch; const previousStorage = globalThis.localStorage; const store = new Map();
-  globalThis.localStorage = { getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value), removeItem: key => store.delete(key) };
+test('DefaultDAO no persiste respuestas de API en localStorage', async () => {
+  const previousFetch = globalThis.fetch; const previousStorage = globalThis.localStorage; let storageCalls = 0;
+  globalThis.localStorage = { getItem() { storageCalls++; return null; }, setItem() { storageCalls++; }, removeItem() { storageCalls++; } };
   globalThis.fetch = async (url, options) => {
     assert.equal(options.method || 'GET', 'GET');
     return jsonResponse([{ idProducto: 'p-1' }], 200, { 'total-registros': '1' });
   };
   try {
-    await new DefaultDAO('/v1/productos').findRange();
-    const cached = JSON.parse(store.get('cafefe-api:/v1/productos?first=0&max=20'));
-    assert.equal(cached.total, '1');
-    assert.deepEqual(cached.payload, [{ idProducto: 'p-1' }]);
+    const response = await new DefaultDAO('/v1/productos').findRange();
+    assert.equal(response.totales, 1);
+    assert.equal(storageCalls, 0);
   } finally { globalThis.fetch = previousFetch; globalThis.localStorage = previousStorage; }
 });
 
@@ -182,15 +181,13 @@ test('DefaultError conserva status y detalle backend en respuestas HTTP de error
   } finally { globalThis.fetch = previousFetch; }
 });
 
-test('DefaultDAO usa caché únicamente cuando una petición GET falla por red', async () => {
+test('DefaultDAO reporta el error de red sin devolver datos de caché obsoletos', async () => {
   const previousFetch = globalThis.fetch; const previousStorage = globalThis.localStorage;
   const store = new Map([['cafefe-api:/v1/productos?first=0&max=20', JSON.stringify({ payload: [{ idProducto: 'cached' }], total: '1' })]]);
   globalThis.localStorage = { getItem: key => store.get(key) ?? null, setItem: (key, value) => store.set(key, value), removeItem: key => store.delete(key) };
   globalThis.fetch = async () => { throw new TypeError('offline'); };
   try {
-    const result = await new DefaultDAO('/v1/productos').findRange();
-    assert.equal(result.datos[0].idProducto, 'cached');
-    assert.equal(result.totales, 1);
+    await assert.rejects(new DefaultDAO('/v1/productos').findRange(), error => error instanceof DefaultError && error.message.includes('offline'));
   } finally { globalThis.fetch = previousFetch; globalThis.localStorage = previousStorage; }
 });
 

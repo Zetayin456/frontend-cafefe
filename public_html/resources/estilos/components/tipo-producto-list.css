@@ -1,0 +1,4 @@
+@import url('../styles.css');
+:host{display:block}.category-row{grid-template-columns:repeat(4,minmax(0,1fr)}.category-card{width:100%;min-height:76px}
+@media(max-width:800px){.category-row{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.category-row{grid-template-columns:1fr}}
