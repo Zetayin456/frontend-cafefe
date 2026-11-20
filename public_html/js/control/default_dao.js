@@ -2,7 +2,7 @@ import { DefaultError } from '../entity/default_error.js';
 import { DefaultResponse } from '../entity/default_response.js';
 
 export class DefaultDAO {
-  static API_BASE = 'http://localhost:9080/cafeteria_pos/api';
+  static API_BASE = 'http://cafefe.backend:9080/cafefe';
   constructor(endpoint = '', mapper = value => value) { this.endpoint = endpoint; this.mapper = mapper; this.baseURL = DefaultDAO.API_BASE; }
 
   async request(path, { method = 'GET', body, ...options } = {}) {
