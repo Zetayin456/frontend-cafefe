@@ -1,8 +1,8 @@
-const CACHE_PREFIX = 'cafefe-app-shell-';
+const CACHE_PREFIX = 'cafefe-v20261123065752';
 const CACHE_NAME = `${CACHE_PREFIX}v16`;
 const SHELL = [
   './', './index.html', './resources/estilos/styles.css',
-  './resources/estilos/components/cafefe-app.css', './resources/estilos/components/cafefe-header.css', './resources/estilos/components/catalog-view.css',
+  './resources/estilos/components/cafefe-v20261123065752', './resources/estilos/components/cafefe-v20261123065752', './resources/estilos/components/catalog-view.css',
   './resources/estilos/components/login-view.css', './resources/estilos/components/tipo-producto-list.css', './resources/estilos/components/producto-list.css',
   './resources/estilos/components/orden-cart.css', './resources/estilos/components/orden-pendiente-list.css', './resources/estilos/components/orden-detail.css',
   './resources/estilos/components/factura-pendiente-list.css', './resources/estilos/components/factura-form.css', './resources/estilos/components/pago-form.css', './manifest.webmanifest',

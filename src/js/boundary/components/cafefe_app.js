@@ -41,20 +41,20 @@ export class CafefeApp extends HTMLElement {
   }
   onLogoutRequest() { sessionStorage.removeItem('cafefe-user'); this.employee = null; this.refs.header.employee = null; location.hash = '#/login'; }
   onLoginRequest(event) {
-    const boundary = event.target; boundary.setPending(true);
+    const boundary = event.composedPath()[0]; boundary.setPending(true);
     this._controller.loginEmpleado(event.detail.nombre, event.detail.contrasena)
       .then(employee => this.onAuthenticated(employee))
       .catch(error => boundary.showError(error.message || error.mensaje || 'No se pudo validar el empleado.'));
   }
   onOrderRequest(event) {
-    const boundary = event.target; boundary.setPending(true);
+    const boundary = this.catalogView?.cart || event.composedPath()[0]; boundary.setPending(true);
     this._controller.crearOrden(event.detail)
       .then(order => {
         boundary.items = []; this.cartItems = []; this.toast(`Orden ${order.idOrden ? `#${order.idOrden} ` : ''}enviada a cocina.`);
         this.orderChannel?.postMessage({ type: 'order-created', idOrden: order.idOrden });
         if (this.currentRoute === 'recepcion') this.refreshReception();
       })
-      .catch(error => boundary.setError(error.message || error.mensaje || 'No se pudo enviar el pedido.'));
+      .catch(error => boundary.setError(error.message || error.mensaje || 'No se pudo enviar el pedido.')).finally(() => boundary.setPending(false));
   }
   onCategorySelected(event) { if (this.catalogView) this.catalogView.selectedCategory = event.detail; }
   onProductAdded(event) {
@@ -70,21 +70,32 @@ export class CafefeApp extends HTMLElement {
     const { idOrden, ready } = event.detail;
     try {
       const updated = this._controller.actualizarDespachoOrden(idOrden, ready);
+        if (updated) { fetch('/api/orden/' + encodeURIComponent(idOrden) + '/despachar', { method: 'PUT' }).catch(() => {}); this.orderDetail?.close(); }
       this.orderList?.setOrderReady(idOrden, updated);
       if (this.orderDetail && String(this.orderDetail.order?.idOrden) === String(idOrden)) this.orderDetail.dispatched = updated;
       this.toast(updated ? 'Orden marcada como lista / despachada.' : 'Orden devuelta a pendiente.');
     } catch (error) { this.toast(error.message || 'No se pudo actualizar el despacho de la orden.'); }
   }
   onInvoiceRequest(event) {
-    const boundary = event.target; boundary.setPending(true);
-    const routeGeneration = this.routeGeneration; const detailGeneration = this.detailGeneration;
+    const boundary = event.composedPath?.()[0] || event.target;
+    boundary?.setPending?.(true);
+    const routeGeneration = this.routeGeneration;
     this._controller.crearFactura(event.detail)
-      .then(invoice => { if (routeGeneration === this.routeGeneration && detailGeneration === this.detailGeneration) return this.afterInvoiceCreated(invoice); })
-      .catch(error => boundary.setError(error.message || error.mensaje || 'No se pudo crear la factura.'));
+      .then(invoice => {
+        if (!invoice?.idFactura) throw new Error('El servidor no devolvió el identificador de la factura.');
+        if (routeGeneration === this.routeGeneration) return this.afterInvoiceCreated(invoice);
+      })
+      .catch(error => {
+        const msg = error?.message || error?.mensaje || 'No se pudo crear la factura.';
+        if (boundary?.setError) boundary.setError(msg);
+        else { boundary?.setPending?.(false); this.toast(msg); }
+      });
   }
   onPaymentRequest(event) {
-    const boundary = event.target; boundary.setPending(true);
-    const routeGeneration = this.routeGeneration; const detailGeneration = this.detailGeneration;
+    const boundary = event.composedPath?.()[0] || event.target;
+    boundary?.setPending?.(true);
+    const routeGeneration = this.routeGeneration;
+    const detailGeneration = this.detailGeneration;
     this._controller.registrarPago(event.detail)
       .then(pago => {
         if (routeGeneration !== this.routeGeneration) return;
@@ -94,7 +105,11 @@ export class CafefeApp extends HTMLElement {
           : Promise.resolve();
         return Promise.all([refresh, ticket]);
       })
-      .catch(error => boundary.setError(error.message || error.mensaje || 'No se pudo registrar el pago.'));
+      .catch(error => {
+        const msg = error?.message || error?.mensaje || 'No se pudo registrar el pago.';
+        if (boundary?.setError) boundary.setError(msg);
+        else { boundary?.setPending?.(false); this.toast(msg); }
+      });
   }
   renderRoute() {
     if (!this._controller) return Promise.resolve();
