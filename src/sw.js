@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cafefe-pwa-v20261123081028';
+const CACHE_NAME = 'cafefe-pwa-v20261123090354';
 const ASSETS = [
   './',
   './index.html',
@@ -76,12 +76,12 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.pathname.includes('/api/')) return;
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request).then(resp => {
+    fetch(event.request).then(resp => {
       if (resp && resp.status === 200 && url.origin === self.location.origin) {
         const copy = resp.clone();
         caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
       }
       return resp;
-    }).catch(() => caches.match('./index.html')))
+    }).catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
   );
 });

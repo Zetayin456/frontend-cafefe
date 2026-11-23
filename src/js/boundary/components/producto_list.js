@@ -6,7 +6,7 @@ export const filterProductsByCategory = (products, categoryId = null, categoryNa
     if (!categoryId) return true;
     const prodTypeId = product.idTipoProducto ?? product.tipoProducto?.idTipoProducto;
     if (prodTypeId != null) return String(prodTypeId) === String(categoryId);
-    const text = ` ${product.comentarios || ''}`.toLowerCase();
+    const text = `${product.nombre || ''} ${product.comentarios || ''}`.toLowerCase();
     const isCoffee = /caf|latte|capuchin|espres|mocca|american/.test(text);
     return /caf/i.test(categoryName) ? isCoffee : !isCoffee;
   });
@@ -42,7 +42,7 @@ export class ProductoList extends HTMLElement {
   render() {
     if (!this.isConnected) return;
     const filtered = filterProductsByCategory(this.products, this._selectedType, this._selectedTypeName);
-    renderBoundary(this, `<div class="product-grid">${filtered.map(product => `<article class="product-card"><div class="product-photo" aria-hidden="true">${/caf|latte|capuchin/i.test(product.nombre) ? '☕' : /pan|croissant|pastel/i.test(product.nombre) ? '🥐' : /beb|jugo|limon/i.test(product.nombre) ? '🥤' : '🍽️'}</div><div class="product-body"><h3>${escapeHTML(product.nombre)}</h3><p>${escapeHTML(product.comentarios || '')}</p><div class="product-foot"><span class="price">${formatMoney(product.precioSugerido)}</span><button class="btn small" data-product="${escapeHTML(product.idProducto)}" aria-label="Agregar ${escapeHTML(product.nombre)}">Agregar</button></div></div></article>`).join('') || '<div class="empty">No hay productos activos en esta categoría.</div>'}</div>`);
+    renderBoundary(this, `<div class="product-grid">${filtered.map(product => `<article class="product-card"><div class="product-photo" aria-hidden="true">${/caf|latte|capuchin|espres|mocca|american/i.test(product.nombre) ? '☕' : /pan|croissant|pastel|nacho|gallet/i.test(product.nombre) ? '🥐' : /beb|jugo|limon|te|té/i.test(product.nombre) ? '🥤' : '🍽️'}</div><div class="product-body"><h3>${escapeHTML(product.nombre)}</h3><p>${escapeHTML(product.comentarios || '')}</p><div class="product-foot"><span class="price">${formatMoney(product.precioSugerido)}</span><button class="btn small" data-product="${escapeHTML(product.idProducto)}" aria-label="Agregar ${escapeHTML(product.nombre)}">Agregar</button></div></div></article>`).join('') || '<div class="empty">No hay productos activos en esta categoría.</div>'}</div>`);
     this.productButtons = [...this._boundaryRoot.querySelectorAll('[data-product]')];
   }
 }
