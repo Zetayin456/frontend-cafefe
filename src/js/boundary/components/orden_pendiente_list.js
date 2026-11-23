@@ -43,7 +43,7 @@ export class OrdenPendienteList extends HTMLElement {
     } catch (_) {}
     emit(this, 'despacho-solicitado', { idOrden: id, ready });
     try {
-      await fetch('/api/orden/' + encodeURIComponent(id) + '/despachar', { method: 'PUT' });
+      await fetch('/cafefe/api/orden/' + encodeURIComponent(id) + '/despachar', { method: 'PUT' });
     } catch (_) {}
   }
   handleRootClick(event) {

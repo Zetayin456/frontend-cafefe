@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cafefe-pwa-v20261123090354';
+const CACHE_NAME = 'cafefe-pwa-v20261123122630';
 const ASSETS = [
   './',
   './index.html',

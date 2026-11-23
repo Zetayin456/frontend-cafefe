@@ -70,7 +70,7 @@ export class CafefeApp extends HTMLElement {
     const { idOrden, ready } = event.detail;
     try {
       const updated = this._controller.actualizarDespachoOrden(idOrden, ready);
-        if (updated) { fetch('/api/orden/' + encodeURIComponent(idOrden) + '/despachar', { method: 'PUT' }).catch(() => {}); this.orderDetail?.close(); }
+        if (updated) { fetch('/cafefe/api/orden/' + encodeURIComponent(idOrden) + '/despachar', { method: 'PUT' }).catch(() => {}); this.orderDetail?.close(); }
       this.orderList?.setOrderReady(idOrden, updated);
       if (this.orderDetail && String(this.orderDetail.order?.idOrden) === String(idOrden)) this.orderDetail.dispatched = updated;
       this.toast(updated ? 'Orden marcada como lista / despachada.' : 'Orden devuelta a pendiente.');
