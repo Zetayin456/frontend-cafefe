@@ -98,12 +98,12 @@ test('DAOs consultan todos los recursos GET con sus rutas y first=0&max=20', asy
     await new FacturaDAO().findPending();
     await new FacturaDAO().findById('f/1');
     assert.deepEqual(calls, [
-      { url: 'http://localhost:9080/cafeteria_pos/api/v1/productos?first=0&max=20', method: 'GET' },
-      { url: 'http://localhost:9080/cafeteria_pos/api/v1/tipos-producto?first=0&max=20', method: 'GET' },
-      { url: 'http://localhost:9080/cafeteria_pos/api/v1/cajas?first=0&max=20', method: 'GET' },
-      { url: 'http://localhost:9080/cafeteria_pos/api/orden/pendientes', method: 'GET' },
-      { url: 'http://localhost:9080/cafeteria_pos/api/factura/pendientes', method: 'GET' },
-      { url: 'http://localhost:9080/cafeteria_pos/api/factura/f%2F1', method: 'GET' }
+      { url: 'http://cafefe.backend:9080/cafefe/api/v1/productos?first=0&max=20', method: 'GET' },
+      { url: 'http://cafefe.backend:9080/cafefe/api/v1/tipos-producto?first=0&max=20', method: 'GET' },
+      { url: 'http://cafefe.backend:9080/cafefe/api/v1/cajas?first=0&max=20', method: 'GET' },
+      { url: 'http://cafefe.backend:9080/cafefe/api/orden/pendientes', method: 'GET' },
+      { url: 'http://cafefe.backend:9080/cafefe/api/factura/pendientes', method: 'GET' },
+      { url: 'http://cafefe.backend:9080/cafefe/api/factura/f%2F1', method: 'GET' }
     ]);
   } finally { globalThis.fetch = previousFetch; }
 });
@@ -113,7 +113,7 @@ test('EmpleadoDAO envía POST con el contrato de login oficial', async () => {
   globalThis.fetch = async (url, options) => { seen = { url, method: options.method, body: JSON.parse(options.body) }; return jsonResponse({ idEmpleado: 'e-1', nombre: 'Ana', roles: [{ idEmpleadoRol: 'er-1', idRol: 'r-1', nombre: 'CAJERO' }] }); };
   try {
     const employee = await new EmpleadoDAO().login('Ana', 'uuid-secreto');
-    assert.equal(seen.url, 'http://localhost:9080/cafeteria_pos/api/empleado/login');
+    assert.equal(seen.url, 'http://cafefe.backend:9080/cafefe/api/empleado/login');
     assert.equal(seen.method, 'POST');
     assert.deepEqual(seen.body, { nombre: 'Ana', contrasena: 'uuid-secreto' });
     assert.equal(employee.roles[0].idEmpleadoRol, 'er-1');
@@ -125,7 +125,7 @@ test('OrdenDAO envía POST con cliente y productos al endpoint /orden', async ()
   globalThis.fetch = async (url, options) => { seen = { url, method: options.method, body: JSON.parse(options.body) }; return jsonResponse({ idOrden: 'o-1', cliente: 'Ana', productos: [] }, 201); };
   try {
     await new OrdenDAO().create(new Orden({ cliente: 'Ana', productos: [{ idProducto: 'p-1', cantidad: 2, observaciones: 'Ana' }] }));
-    assert.equal(seen.url, 'http://localhost:9080/cafeteria_pos/api/orden');
+    assert.equal(seen.url, 'http://cafefe.backend:9080/cafefe/api/orden');
     assert.equal(seen.method, 'POST');
     assert.deepEqual(seen.body, { cliente: 'Ana', productos: [{ idProducto: 'p-1', cantidad: 2, observaciones: 'Ana' }] });
   } finally { globalThis.fetch = previousFetch; }
@@ -136,7 +136,7 @@ test('FacturaDAO crea factura con caja y rol de empleado', async () => {
   globalThis.fetch = async (url, options) => { seen = { url, method: options.method, body: JSON.parse(options.body) }; return jsonResponse({ idFactura: 'f-1', idOrden: 'o-1', estado: 'PENDIENTE', detalle: [], total: 10 }, 201); };
   try {
     const invoice = await new FacturaDAO().create({ idOrden: 'o-1', idCaja: 'c-1', idEmpleadoRol: 'er-1', cliente: 'Ana', observaciones: 'Venta local' });
-    assert.equal(seen.url, 'http://localhost:9080/cafeteria_pos/api/factura');
+    assert.equal(seen.url, 'http://cafefe.backend:9080/cafefe/api/factura');
     assert.equal(seen.method, 'POST');
     assert.deepEqual(seen.body, { idOrden: 'o-1', idCaja: 'c-1', idEmpleadoRol: 'er-1', cliente: 'Ana', observaciones: 'Venta local' });
     assert.equal(invoice.idFactura, 'f-1');
@@ -148,7 +148,7 @@ test('PagoDAO envía varios medios al endpoint /pago', async () => {
   globalThis.fetch = async (url, options) => { seen = { url, method: options.method, body: JSON.parse(options.body) }; return jsonResponse({ idPago: 'pay-1', idFactura: 'f-1', detalles: [] }, 201); };
   try {
     await new PagoDAO().create({ idFactura: 'f-1', observaciones: 'Split', detalles: [{ tipoPago: 'EFECTIVO', monto: 2, referenciaExterna: null, observaciones: null }, { tipoPago: 'QR', monto: 1.5, referenciaExterna: 'ref-1', observaciones: null }] });
-    assert.equal(seen.url, 'http://localhost:9080/cafeteria_pos/api/pago');
+    assert.equal(seen.url, 'http://cafefe.backend:9080/cafefe/api/pago');
     assert.equal(seen.method, 'POST');
     assert.deepEqual(seen.body, {
       idFactura: 'f-1',

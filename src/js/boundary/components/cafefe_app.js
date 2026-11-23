@@ -222,7 +222,7 @@ export class CafefeApp extends HTMLElement {
     }).catch(error => this.toast(`Pago registrado; no se pudo cargar el ticket: ${error.message}`));
   }
   install() {
-    if (!this.installPrompt) return Promise.resolve();
+    if (!this.installPrompt) { this.toast("Para instalar Cafefe usa el menú del navegador (⋮ -> Instalar Cafefe) en una ventana normal (no InPrivate)."); return Promise.resolve(); }
     const prompt = this.installPrompt; this.installPrompt = null; this.refs.header.canInstall = false;
     try { return Promise.resolve(prompt.prompt()).catch(() => this.toast('No se pudo iniciar la instalación de Cafefe.')); }
     catch { this.toast('No se pudo iniciar la instalación de Cafefe.'); return Promise.resolve(); }
